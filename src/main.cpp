@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <avr/sleep.h>
+#include "color_utils.h"
 
 // --- ピン定義 ---
 #define PIR_PIN       2   // 人感センサー（INT0）
@@ -37,19 +38,10 @@ void setRGB(int r, int g, int b) {
     analogWrite(BLUE_PIN, b);
 }
 
-// HSV色相(0-359°)をRGBに変換してLEDに出力（整数演算のみ）
-// 色相を60°ごとに6領域に分割し、各領域内で線形補間
+// HSV色相をRGBに変換してLEDに出力（変換ロジックは color_utils.h）
 void applyHue(int h) {
-    int region = h / 60;             // 色相の領域（0-5）
-    int t = (h % 60) * 255 / 60;    // 領域内の補間値（0-255）
-    switch (region) {
-        case 0:  setRGB(255, t, 0);         break;  // 赤→黄
-        case 1:  setRGB(255 - t, 255, 0);   break;  // 黄→緑
-        case 2:  setRGB(0, 255, t);         break;  // 緑→シアン
-        case 3:  setRGB(0, 255 - t, 255);   break;  // シアン→青
-        case 4:  setRGB(t, 0, 255);         break;  // 青→マゼンタ
-        default: setRGB(255, 0, 255 - t);   break;  // マゼンタ→赤
-    }
+    RGB c = hueToRGB(h);
+    setRGB(c.r, c.g, c.b);
 }
 
 // --- 割り込みハンドラ ---
@@ -67,7 +59,7 @@ void onEncoderChange() {
     // CLKの立ち上がりエッジ（LOW→HIGH）で回転方向を判定
     if (prevClkState == LOW && clk == HIGH) {
         hue += (digitalRead(ENC_DT) == LOW) ? HUE_STEP : -HUE_STEP;  // DT=LOW:時計回り
-        hue = (hue + 360) % 360;  // 0-359°の範囲に正規化
+        hue = normalizeHue(hue);  // 0-359°の範囲に正規化
         colorChanged = true;
         colorMode = true;
         lastRotationTime = millis();  // タイムアウト計測用（回転検出時のみ更新）
