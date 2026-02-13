@@ -14,6 +14,7 @@
 #define THRESHOLD          50     // 明るさしきい値（これ未満で暗いと判定）
 #define LED_ON_TIME        20000  // モーション検知時のLED点灯時間（20秒）
 #define COOLDOWN_TIME      3000   // LED消灯後の再検知抑制時間（3秒）
+#define PIR_WARMUP_TIME    30000  // PIRセンサーのウォームアップ時間（30秒）
 #define COLOR_TIMEOUT      5000   // カラーモードのタイムアウト（5秒）
 #define HUE_STEP           15     // 1クリックあたりの色相変化（15°、24クリックで一周）
 #define ENC_DEBOUNCE       5      // エンコーダーのデバウンス時間（5ms）
@@ -107,6 +108,16 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(ENC_CLK), onEncoderChange, CHANGE);
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     setRGB(0, 0, 0);  // LED消灯
+
+    // PIRセンサーのウォームアップ待機
+    // 電源投入直後は赤外線キャリブレーション中のため出力が不安定。
+    // 安定するまで待機し、LED_BUILTINの点滅で準備中を表示。
+    for (unsigned long start = millis(); millis() - start < PIR_WARMUP_TIME; ) {
+        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+        delay(500);
+    }
+    digitalWrite(LED_BUILTIN, LOW);  // 点滅終了
+
     goToSleep();       // 初回スリープ
 }
 
