@@ -13,6 +13,7 @@
 // --- 動作パラメータ ---
 #define THRESHOLD          50     // 明るさしきい値（これ未満で暗いと判定）
 #define LED_ON_TIME        20000  // モーション検知時のLED点灯時間（20秒）
+#define COOLDOWN_TIME      3000   // LED消灯後の再検知抑制時間（3秒）
 #define COLOR_TIMEOUT      5000   // カラーモードのタイムアウト（5秒）
 #define HUE_STEP           15     // 1クリックあたりの色相変化（15°、24クリックで一周）
 #define ENC_DEBOUNCE       5      // エンコーダーのデバウンス時間（5ms）
@@ -152,6 +153,7 @@ void loop() {
             delay(10);
         }
         setRGB(0, 0, 0);          // LED消灯
+        delay(COOLDOWN_TIME);      // PIRセンサーが安定するまで待機し、即座の再検知を防止
         ADCSRA &= ~(1 << ADEN);   // ADC無効化（省電力）
 
         attachInterrupt(digitalPinToInterrupt(ENC_CLK), onEncoderChange, CHANGE);  // エンコーダー割り込み再開
