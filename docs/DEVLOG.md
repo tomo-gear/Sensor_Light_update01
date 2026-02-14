@@ -89,3 +89,28 @@ pio test -e native
 ```
 
 ※ PC上に gcc/g++ が必要（MinGW-w64 等）。MSYS2の MinGW-w64 gcc を使用して全14テストPASS確認済み。
+
+## 2026-02-14: 元ファイルへのロジック復元＋割り込みバグ修正
+
+### 元ファイルへのロジック復元
+
+前回セッションのリファクタリング（命名変更、`color_utils.h`分離等）を試みたが、実機で複数の問題が発生したため、元の Arduino スケッチ（`sketch_mar21a_SENSOR_Light_UPDATE01.ino`）のロジックに戻した。前回セッションで追加した改善（`volatile`宣言、`sleep_disable()`、アトミック読み取り）は維持している。
+
+現在の `main.cpp` は元の `.ino` ファイルのロジックをベースに、以下の2件のバグ修正を適用した状態。
+
+### バグ修正
+
+#### 1. PIR再トリガーループの防止（EIFRフラグクリア）
+
+- **問題**: LED点灯中（20秒）にPIRが再検知すると、INT0が無効（`detachInterrupt`済み）でもEIFR（External Interrupt Flag Register）のINTF0ビットがセットされる。`goToSleep()`で`attachInterrupt(PIR, RISING)`した瞬間に保留フラグによりISRが即発火し、スリープ→復帰→スリープの再トリガーループが発生する。HC-SR501のHIGH期間を短く（3秒以内）設定していても、LED点灯中（t=6〜20秒）に人がセンサー前にいれば発生する。
+- **修正**: `goToSleep()`内で`attachInterrupt`の前に`EIFR = (1 << INTF0);`を追加し、保留中のフラグをクリア。`|=`ではなく`=`を使用することで、INT1（エンコーダー）側のフラグを誤ってクリアすることを防いでいる（AVRの「write-1-to-clear」レジスタの仕様）。
+- **参考**: ATmega328Pデータシート Section 13.2.3 EIFR、ArduinoCore-avr Issue #244
+
+#### 2. スリープ復帰時のエンコーダー取りこぼし防止（デバウンスタイマーリセット）
+
+- **問題**: PWR_DOWNスリープ中はTimer0が停止し`millis()`が凍結する。エンコーダー1クリックでCLKは HIGH→LOW→HIGH と変化しCHANGE割り込みが2回発火するが、回転検出はLOW→HIGH（2回目）でのみ行う。1回目のエッジで`lastEncTime`に凍結値が記録され、直後の2回目のエッジでも`millis()`がほぼ同じ凍結値を返すため、デバウンスフィルター（5ms以内の変化を無視）に弾かれ、最初の1クリックが無視される。
+- **修正**: `goToSleep()`内でスリープ前に`lastEncTime = 0`にリセット。復帰時の1回目のエッジで`now - lastEncTime`が大きな値となりデバウンスを通過するため、`lastEncTime`に適切な値が記録され、2回目のエッジも正しく処理される。
+
+### クロック周波数の変更
+
+`platformio.ini`の`board_build.f_cpu`を`1000000L`（1 MHz）から`8000000L`（8 MHz）に変更。内蔵8 MHzオシレータの実際の動作周波数に合わせた。
