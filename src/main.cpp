@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <avr/sleep.h>
+#include "color_utils.h"
 
 // 【注意】PIR再トリガー防止について
 //
@@ -69,7 +70,7 @@ void readEncoder() {
         } else {
             colorHue -= ENC_STEP;  // 反時計回り
         }
-        colorHue = (colorHue + 360) % 360; // 0-359 の範囲にする
+        colorHue = normalizeHue(colorHue);
         colorChanged = true;
         // 色設定モードに入る
         colorMode = true;
@@ -81,24 +82,12 @@ void readEncoder() {
     
 }
 
-// HUE (0-359) を RGB (0-255) に変換（整数演算のみ）
+// 色相に応じたRGB値でLEDを点灯（変換ロジックはcolor_utils.hに分離）
 void setLEDColor(int hue) {
-    int r = 0, g = 0, b = 0;
-    int region = hue / 60;  // 0〜5 のどの区間か
-    int remainder = (hue % 60) * 255 / 60;  // 0〜255 の割合
-
-    switch (region) {
-        case 0: r = 255; g = remainder; b = 0; break;
-        case 1: r = 255 - remainder; g = 255; b = 0; break;
-        case 2: r = 0; g = 255; b = remainder; break;
-        case 3: r = 0; g = 255 - remainder; b = 255; break;
-        case 4: r = remainder; g = 0; b = 255; break;
-        case 5: r = 255; g = 0; b = 255 - remainder; break;
-    }
-
-    analogWrite(RED_PIN, r);
-    analogWrite(GREEN_PIN, g);
-    analogWrite(BLUE_PIN, b);
+    RGB c = hueToRGB(hue);
+    analogWrite(RED_PIN, c.r);
+    analogWrite(GREEN_PIN, c.g);
+    analogWrite(BLUE_PIN, c.b);
 }
 
 // LED消灯
