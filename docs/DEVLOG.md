@@ -252,3 +252,9 @@ PIRモジュールの出力がHIGHからLOWに遷移しきる前に
 - `LED_OFF_COOLDOWN`（5秒）を`#define`で定義
 - LED消灯後、スリープ前に`delay(LED_OFF_COOLDOWN)`を追加し、
   PIR出力が安定するまで待機するようにした
+
+### 未使用ピンのフローティング防止
+
+`setup()`内で未使用ピン（0, 1, 5, 6, 7, 8, 12, A1〜A5）を
+`INPUT_PULLUP`に設定。Activeモード時の貫通電流を防止する。
+（ATmega328Pデータシート Section 14.2.6）

@@ -122,7 +122,12 @@ void setup() {
     pinMode(ENC_CLK, INPUT_PULLUP);
     pinMode(ENC_DT, INPUT_PULLUP);
 
-    
+    // 未使用ピンをINPUT_PULLUPに設定（フローティング防止）
+    const uint8_t unusedPins[] = {0, 1, 5, 6, 7, 8, 12, A1, A2, A3, A4, A5};
+    for (uint8_t i = 0; i < sizeof(unusedPins); i++) {
+        pinMode(unusedPins[i], INPUT_PULLUP);
+    }
+
     attachInterrupt(digitalPinToInterrupt(ENC_CLK), readEncoder, CHANGE);
 
     setLEDColor(colorHue);
