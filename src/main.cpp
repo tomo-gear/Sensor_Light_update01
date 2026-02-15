@@ -40,6 +40,7 @@
 #define COLOR_MODE_TIMEOUT 5000  // 5秒で通常モードに戻る
 #define ENC_STEP 15      // 24クリック = 360° を均等割り（15°/クリック）
 #define ENC_DEBOUNCE_TIME 5  // 5ms 以内の変化を無視
+#define LED_OFF_COOLDOWN 5000  // LED消灯後、スリープ前の待機時間（PIR出力安定待ち）
 
 volatile bool motionDetected = false;
 volatile int colorHue = 0;  // 色相（0-359°）
@@ -173,6 +174,9 @@ void loop() {
             setLEDColor(colorHue);
             delay(LED_ON_TIME);
             turnOffLED();
+            // LED消灯後、PIR出力が安定するまで待機してから再スリープする（再トリガー防止）
+            delay(500);
+            delay(LED_OFF_COOLDOWN);
         } else {
           delay(1);
         }
